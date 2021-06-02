@@ -1,0 +1,31 @@
+{
+  "name": "pendle-onsen-rewarder",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "chai": "^4.3.4",
+    "ethereum-waffle": "^3.3.0",
+    "ethers": "^5.3.0",
+    "hardhat": "^2.3.0",
+    "prettier": "2.2.1",
+    "prettier-plugin-solidity": "1.0.0-beta.10"
+  },
+  "version": "1.0.0",
+  "repository": "https://github.com/pendle-finance/onsen-rewarder",
+  "author": "pendle.finance",
+  "license": "MIT",
+  "dependencies": {
+    "@sushiswap/core": "^1.4.2",
+    "@tenderly/hardhat-tenderly": "^1.0.12",
+    "@types/mocha": "^8.2.2",
+    "@types/node": "^15.6.1",
+    "dotenv": "^10.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^4.3.2",
+    "@boringcrypto/boring-solidity": "boringcrypto/BoringSolidity#e06e943"
+  },
+  "scripts": {
+    "compile": "yarn hardhat compile",
+    "format": "yarn prettier --write contracts/*.sol && yarn prettier --write scripts/*.ts && yarn prettier --write test/*.ts"
+  }
+}
