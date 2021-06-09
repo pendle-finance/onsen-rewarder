@@ -47,9 +47,7 @@ contract PendleOnsenRewarder is IRewarder {
         uint256 sushiAmount,
         uint256
     ) external override onlyMCV2 {
-        uint256 pendingReward =
-            sushiAmount.mul(rewardMultiplier) / REWARD_TOKEN_DIVISOR;
-
+        uint256 pendingReward = sushiAmount.mul(rewardMultiplier) / REWARD_TOKEN_DIVISOR;
         uint256 rewardBal = rewardToken.balanceOf(address(this));
         if (pendingReward > rewardBal) {
             rewardToken.safeTransfer(to, rewardBal);
@@ -62,26 +60,16 @@ contract PendleOnsenRewarder is IRewarder {
         uint256 pid,
         address user,
         uint256 sushiAmount
-    )
-        external
-        view
-        override
-        returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts)
-    {
+    ) external view override returns (IERC20[] memory rewardTokens, uint256[] memory rewardAmounts) {
         IERC20[] memory _rewardTokens = new IERC20[](1);
         _rewardTokens[0] = (rewardToken);
         uint256[] memory _rewardAmounts = new uint256[](1);
-        _rewardAmounts[0] =
-            sushiAmount.mul(rewardMultiplier) /
-            REWARD_TOKEN_DIVISOR;
+        _rewardAmounts[0] = sushiAmount.mul(rewardMultiplier) / REWARD_TOKEN_DIVISOR;
         return (_rewardTokens, _rewardAmounts);
     }
 
     modifier onlyMCV2 {
-        require(
-            msg.sender == MASTERCHEF_V2,
-            "Only MCV2 can call this function."
-        );
+        require(msg.sender == MASTERCHEF_V2, "Only MCV2 can call this function.");
         _;
     }
 }
