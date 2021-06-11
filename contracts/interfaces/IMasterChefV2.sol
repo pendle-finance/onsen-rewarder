@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
+import "@boringcrypto/boring-solidity/contracts/libraries/BoringERC20.sol";
 
 interface IMasterChefV2 {
     function deposit(uint256 pid, uint256 amount, address to) external;
@@ -11,5 +12,5 @@ interface IMasterChefV2 {
     function sushiPerBlock() external view returns (uint256);
     function owner() external view returns (address);
     function totalAllocPoint() external view returns (uint256);
-    function lpToken(uint256) external view returns (address);
+    function lpToken(uint256) external view returns (IERC20);
 }
