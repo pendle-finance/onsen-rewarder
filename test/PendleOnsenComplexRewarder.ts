@@ -14,6 +14,7 @@ describe('PendleOnsenComplexRewarder', function () {
   let masterchefV2: Contract;
   let alice: Wallet;
   let bob: Wallet;
+  let snapshotId: string;
 
   const printState = async (label: string) => {
     console.log(`\tPrinting state - ${label}`);
@@ -21,6 +22,20 @@ describe('PendleOnsenComplexRewarder', function () {
     console.log(`\t\t Sushi balance of Alice = ${await sushiToken.balanceOf(alice.address)}`);
     console.log(`\t\t Pendle balance of Alice = ${await pendleToken.balanceOf(alice.address)}`);
   };
+
+  async function evm_snapshot(): Promise<any> {
+    return await hre.network.provider.request({
+      method: 'evm_snapshot',
+      params: [],
+    });
+  }
+
+  async function evm_revert(snapshotId: string) {
+    return await hre.network.provider.request({
+      method: 'evm_revert',
+      params: [snapshotId],
+    });
+  }
 
   function approxBigNumber(
     _actual: BigNumberish,
@@ -90,7 +105,7 @@ describe('PendleOnsenComplexRewarder', function () {
   before(async () => {
     [alice, bob] = provider.getWallets();
     const Rewarder = await ethers.getContractFactory('PendleOnsenComplexRewarder');
-    rewarder = await Rewarder.deploy(consts.PENDLE_ADDRESS, consts.TOKEN_PER_BLOCK, consts.MASTERCHEF_V2);
+    rewarder = await Rewarder.deploy(consts.PENDLE_ADDRESS, consts.PENDLE_PER_BLOCK, consts.MASTERCHEF_V2);
     await rewarder.deployed();
     console.log('PendleOnsenComplexRewarder deployed to:', rewarder.address);
 
@@ -113,31 +128,54 @@ describe('PendleOnsenComplexRewarder', function () {
     await lpToken
       .connect(pendleWethLpWhale)
       .transfer(bob.address, testPendleWethLpBalance);
-  });
-  it('Should be able to stake Pendle-WETH LP and get Pendle', async function () {
-    const lpTokenAmount = (await lpToken.balanceOf(alice.address)).div(10);
 
     console.log(`\t About to approve masterchefV2 `);
     await lpToken.approve(masterchefV2.address, consts.INF);
     await lpToken.connect(bob).approve(masterchefV2.address, consts.INF);
-    console.log(`\t About to deposit into masterchefV2 `);
+    snapshotId = await evm_snapshot();
+  });
 
+  beforeEach(async () => {
+    await evm_revert(snapshotId);
+    snapshotId = await evm_snapshot();
+  })
+
+  it('Correct pendle rewards, before and after setting new reward rate', async function () {
+    const lpTokenAmount = (await lpToken.balanceOf(alice.address)).div(10);
+    console.log(`\t About to deposit into masterchefV2 `);
     await masterchefV2.deposit(consts.PENDLE_WETH_PID, lpTokenAmount, alice.address);
 
     await printState("Right after staking");
     await masterchefV2.harvest(consts.PENDLE_WETH_PID, alice.address);
+    // previous transaction is considered block t0
+
     await printState("After harvesting");
     const alicePendleBalance = await pendleToken.balanceOf(alice.address);
-    approxBigNumber(alicePendleBalance, consts.TOKEN_PER_BLOCK, 1000000000);
+    approxBigNumber(alicePendleBalance, consts.PENDLE_PER_BLOCK, 1000000000);
 
     console.log(`\tBob depositing`);
     await masterchefV2.connect(bob).deposit(consts.PENDLE_WETH_PID, lpTokenAmount, bob.address);
+    // previous transaction happened at t0+1
+
     console.log(`\tBob harvesting`);
     await masterchefV2.connect(bob).harvest(consts.PENDLE_WETH_PID, bob.address);
+    // previous transaction happened at t0+2
+
     const bobPendleBalance = await pendleToken.balanceOf(bob.address);
-    approxBigNumber(bobPendleBalance, consts.TOKEN_PER_BLOCK.div(2), 1000000000);
-  });
-  it('TODO: Changing rewards rate should work', async function () {
-    //TODO
+    approxBigNumber(bobPendleBalance, consts.PENDLE_PER_BLOCK.div(2), 1000000000);
+
+    const newPendlePerBlock = consts.PENDLE_PER_BLOCK.mul(7);
+    await rewarder.setRewardRate(newPendlePerBlock, [consts.PENDLE_WETH_PID]);
+    // previous transaction happened at t0+3
+
+    // next transaction is at t0+4. A should get 1 block of PENDLE_PER_BLOCK, 2 blocks of PENDLE_PER_BLOCK /2,
+    // and 1 block of newPendlePerBlock/2
+    await masterchefV2.harvest(consts.PENDLE_WETH_PID, alice.address);
+    const aliceAdditionalPendle = (await pendleToken.balanceOf(alice.address)).sub(alicePendleBalance);
+    approxBigNumber(
+      aliceAdditionalPendle,
+      consts.PENDLE_PER_BLOCK.mul(2).add(newPendlePerBlock.div(2)),
+      10000000000
+    );
   });
 });
